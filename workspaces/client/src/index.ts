@@ -1,9 +1,8 @@
 import * as Phaser from 'phaser';
-import { TonConnectUI, Wallet } from '@tonconnect/ui';
+import { Wallet } from '@tonconnect/ui';
 import { restoreWalletConnection } from '../../phaser-ton';
 import { UI } from './ui';
-import { ConnectWalletHtmlScene } from './connect-wallet-html';
-import { ConnectWalletCanvasScene } from './connect-wallet-canvas';
+import { ConnectWalletHtmlScene, ConnectWalletCanvasScene, ConnectScene } from './connect-wallet-ui';
 import { loadConfig } from './config';
 import { BG_HEIGHT, COLUMN_ACCEL, COLUMN_TIME_ACCEL, FLAP_THRESH, GAME_HEIGHT, GAME_WIDTH, GAP_END, GAP_MAX, GAP_MIN, GAP_START, GRAVITY, INITIAL_COLUMN_INTERVAL, INITIAL_COLUMN_VELOCITY, JUMP_COOLDOWN, JUMP_VEL, PIPE_HEIGHT, PIPE_SCALE, PIPE_WIDTH } from './consts';
 
@@ -187,37 +186,12 @@ async function run() {
     try {
         const config = await loadConfig();
 
-        // setup ton connect UI
-        const tc = new TonConnectUI({
-            manifestUrl: config.APP_MANIFEST_URL,
-            actionsConfiguration: {
-                returnStrategy: 'back',
-                twaReturnUrl: config.APP_URL
-            }
-        });
-
-        // prepare UI elements
-        const gameUi = new UI(config, tc);
-        const connectUiHtml = new ConnectWalletHtmlScene(tc);
-        const connectUICanvas = new ConnectWalletCanvasScene({
-            style: 'light',
-            onWalletChange: (wallet) => {
-                walletChanged(wallet);
-            },
-            onError: (error) => {
-                console.error('Caught Error', error);
-            },
-            tonParams: {
-                manifestUrl: config.APP_MANIFEST_URL,
-            }
-        });
-
         // render game
         const game = new Phaser.Game({
             type: Phaser.AUTO,
             height: GAME_HEIGHT,
             width: GAME_WIDTH,
-            scene: [new MyScene(gameUi)],
+            // scene: [new MyScene(gameUi)],
             physics: {
                 default: 'arcade',
             },
@@ -235,42 +209,56 @@ async function run() {
         // @ts-ignore
         globalThis.__PHASER_GAME__ = game;
 
-        const walletChanged = (wallet: Wallet | null) => {
+        // prepare UI elements
+        const connectUi: ConnectScene = CONNECT_UI === 'html'
+            ? new ConnectWalletHtmlScene({
+                manifestUrl: config.APP_MANIFEST_URL,
+                actionsConfiguration: {
+                    returnStrategy: 'back',
+                    twaReturnUrl: config.APP_URL
+                }
+            })
+            : new ConnectWalletCanvasScene({
+                style: 'light',
+                /* onWalletChange: (wallet) => {
+                    initUi(wallet);
+                }, */
+                onError: (error) => {
+                    console.error('Caught Error', error);
+                },
+                tonParams: {
+                    manifestUrl: config.APP_MANIFEST_URL,
+                }
+            });
+        const gameUi = new UI(config, connectUi.getTonConnector());
+        game.scene.add('game', new MyScene(gameUi), true);
+        if (connectUi instanceof ConnectWalletCanvasScene) {
+            game.scene.add(ConnectWalletCanvasScene.sceneKey, connectUi, true);
+        }
+
+        const initUi = (wallet: Wallet | null) => {
+            connectUi.show();
+
             if (wallet) {
-                connectUiHtml.hide();
-        
                 gameUi.transitionToGame();
                 gameUi.showMain(false);
                 gameUi.showBalance();
         
-                if (CONNECT_UI === 'canvas') {
-                    if (!game.scene.isActive(ConnectWalletCanvasScene.sceneKey)) {
-                        game.scene.add(ConnectWalletCanvasScene.sceneKey, connectUICanvas, true);
-                    }
-                    connectUICanvas.toRight();
-                }
+                connectUi.toRight();
             } else {
                 gameUi.transitionOutOfGame();
                 gameUi.hideShop();
                 gameUi.hideMain();
                 gameUi.hideBalance();
-        
-                if (CONNECT_UI === 'html') {
-                    connectUiHtml.show();
-                } else {
-                    if (!game.scene.isActive(ConnectWalletCanvasScene.sceneKey)) {
-                        game.scene.add(ConnectWalletCanvasScene.sceneKey, connectUICanvas, true);
-                    }
-                    connectUICanvas.toCenter();
-                }
+
+                connectUi.toCenter();
             }
         }
 
         // load wallet and run the UI
-        tc.onStatusChange(walletChanged);
         const wallet = await restoreWalletConnection({manifestUrl: config.APP_MANIFEST_URL});
-        walletChanged(wallet);
-        
+        initUi(wallet);
+        connectUi.getTonConnector().onStatusChange(initUi);
     } catch (e) {
         console.error('Failed to launch the game.', e);
     }

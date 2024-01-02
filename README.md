@@ -39,6 +39,12 @@ To run manually use `npm run dev` command.
 To run with Docker use `docker-compose -f ./docker-compose.dev.yaml up` command.
 >Ensure you have [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/) installed. Run Docker.
 
+## Connect Wallet implementation
+
+There are two ways to connect a wallet to the game: connect-ui which is implemented as HTML UI and canvas version of the button. Canvas button is in beta, so it supports only Telegram Wallet.
+
+To try both options you can change `CONNECT_UI` variable in `workspaces/client/src/index.ts` file.
+
 ## Migrations
 
 * Create a new migration after changing entities `npm run typeorm:generate-migration --name=[NAME]`

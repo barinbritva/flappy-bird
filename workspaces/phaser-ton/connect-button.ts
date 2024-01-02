@@ -26,7 +26,7 @@ export function restoreWalletConnection(options?: TonConnectOptions) {
 
 export interface ConnectTelegramWalletParams {
     style: Styles;
-    onWalletChange: (wallet: Wallet | null) => void;
+    onWalletChange?: (wallet: Wallet | null) => void;
     onError: (error: Error | unknown) => void;
     language?: Locales;
     tonParams?: TonConnectOptions;
@@ -158,7 +158,9 @@ export class ConnectTelegramWalletButton extends Phaser.GameObjects.Container {
                 this.setSchema(buttonDesign.default);
             }
 
-            this.params.onWalletChange(wallet);
+            if (this.params.onWalletChange) {
+                this.params.onWalletChange(wallet);
+            }
         });
 
         this.connector.restoreConnection().then(() => {
