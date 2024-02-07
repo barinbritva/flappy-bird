@@ -18,6 +18,7 @@
     "webpack-dev-server": "^4.15.1"
   },
   "dependencies": {
+    "@ton-community/gamefi-sdk": "^0.0.3",
     "buffer": "^6.0.3",
     "phaser": "^3.60.0"
   }

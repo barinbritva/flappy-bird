@@ -5,8 +5,30 @@ import { ConnectWalletCanvasScene, createConnectUi } from './connect-wallet-ui';
 import { loadConfig } from './config';
 import { GAME_HEIGHT, GAME_WIDTH } from './consts';
 import { GameScene } from './game-scene';
+import { GameFiSDK, Storage as AssetsStorage, ExtendedTonClient4 } from '@ton-community/gamefi-sdk';
+import { getHttpV4Endpoint } from '@orbs-network/ton-access';
+
+class StorageStub implements AssetsStorage {
+    uploadFile(): Promise<string> {
+        throw new Error(
+            'To use storage related features, pass a Storage implementation to "GameFi.create" method.'
+        );
+    }
+}
 
 async function run() {
+    const extendedClient = new ExtendedTonClient4({ endpoint: await getHttpV4Endpoint() });
+    const assetsSdk = await GameFiSDK.create({
+        storage: new StorageStub(),
+        api: {
+            open: (contract) => {
+                return extendedClient.openExtended(contract);
+            },
+            provider: (address, init) => extendedClient.provider(address, init)
+        },
+    });
+
+
     try {
         (window as any).Telegram.WebApp.expand();
         const config = await loadConfig();
